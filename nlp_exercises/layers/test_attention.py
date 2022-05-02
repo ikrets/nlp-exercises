@@ -38,7 +38,7 @@ def test_masked_attention_one_head():
 
     attention = MultiHeadAttention(
         dimension=1,
-        mask_queries_from=1,
+        masked=True,
         WK_init=lambda _, __: np.array([[1], [0]]),
         WQ_init=lambda _, __: np.array([[0], [1]]),
         WV_init=lambda _, __: np.array([[1], [1]]),
@@ -48,7 +48,7 @@ def test_masked_attention_one_head():
     params = attention.init(random_key, keys_x, queries_x, values_x)
     result = attention.apply(params, keys_x, queries_x, values_x)
 
-    QKT = np.array([[4, -np.inf], [6, -np.inf]])
+    QKT = np.array([[4, -np.inf], [6, -30]])
     weights1 = nn.softmax(QKT[0])
     weights2 = nn.softmax(QKT[1])
 

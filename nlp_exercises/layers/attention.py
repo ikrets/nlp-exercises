@@ -6,7 +6,7 @@ import jax.numpy as jnp
 class MultiHeadAttention(nn.Module):
     dimension: int
     num_heads: int = 1
-    mask_queries_from: Optional[int] = None
+    masked: bool = False
 
     WK_init: Callable = nn.initializers.lecun_normal()
     WQ_init: Callable = nn.initializers.lecun_normal()
@@ -28,15 +28,12 @@ class MultiHeadAttention(nn.Module):
         WQ = self.param("WQ", self.WQ_init, WX_shape)
         WV = self.param("WV", self.WV_init, WX_shape)
 
-        if self.mask_queries_from is None:
-            mask_from_concrete = key_x.shape[0]
+        if not self.masked:
+            mask = jnp.zeros((1, 1, 1))
         else:
-            assert self.mask_queries_from <= key_x.shape[0]
-            mask_from_concrete = self.mask_queries_from
-
-        mask_zeros = jnp.zeros((1, 1, mask_from_concrete))
-        mask_neginf = jnp.full((1, 1, key_x.shape[0] - mask_from_concrete), -jnp.inf)
-        mask = jnp.concatenate([mask_zeros, mask_neginf], axis=-1)
+            mask = jnp.triu(
+                jnp.full((1, key_x.shape[-2], key_x.shape[-2]), -jnp.inf), k=1
+            )
 
         K = jnp.dot(key_x, WK)
         Q = jnp.dot(query_x, WQ)
