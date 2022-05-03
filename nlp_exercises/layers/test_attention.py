@@ -5,7 +5,7 @@ from jax import numpy as jnp
 from flax import linen as nn
 
 
-def test_unmasked_attention_one_head():
+def test_unmasked_attention_one_head_single_example():
     keys_x = np.array([[1, 2], [-5, -10]])
     queries_x = np.array([[3, 4], [5, 6]])
     values_x = np.array([[7, 8], [9, 10]])
@@ -31,7 +31,7 @@ def test_unmasked_attention_one_head():
     assert weights2.dot(V) == result[1]
 
 
-def test_masked_attention_one_head():
+def test_masked_attention_one_head_single_example():
     keys_x = np.array([[1, 2], [-5, -10]])
     queries_x = np.array([[3, 4], [5, 6]])
     values_x = np.array([[7, 8], [9, 10]])
@@ -57,7 +57,7 @@ def test_masked_attention_one_head():
     assert weights2.dot(V) == result[1]
 
 
-def test_unmasked_attention_multiple_heads():
+def test_unmasked_attention_multiple_heads_single_example():
     x = np.array([[1, 2], [-5, -10], [-2, -4]])
 
     W_init = lambda _, __: np.array([[1, 0, 1, -1], [0, 1, 1, -1]])
