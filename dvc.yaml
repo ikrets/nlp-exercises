@@ -1,0 +1,8 @@
+stages:
+  lovecraft_clean_split_tokenize:
+    cmd: conda run python3 nlp_exercises/lovecraft/clean_split_tokenize.py
+    deps:
+    - data/lovecraft/input
+    - nlp_exercises/lovecraft/clean_split_tokenize.py
+    outs:
+    - data/lovecraft/dataset

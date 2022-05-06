@@ -1,0 +1,17 @@
+schema: '2.0'
+stages:
+  lovecraft_clean_split_tokenize:
+    cmd: conda run python3 nlp_exercises/lovecraft/clean_split_tokenize.py
+    deps:
+    - path: data/lovecraft/input
+      md5: fba03c73aec3a8faececa46c4865283b.dir
+      size: 2680448
+      nfiles: 2
+    - path: nlp_exercises/lovecraft/clean_split_tokenize.py
+      md5: ef9508d444fb891a8c0584f55449e1d0
+      size: 2544
+    outs:
+    - path: data/lovecraft/dataset
+      md5: a904754078e0d1493acb9b0125e0fee2.dir
+      size: 7511696
+      nfiles: 65
