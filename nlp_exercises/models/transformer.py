@@ -1,5 +1,4 @@
 import functools
-from base64 import encode
 from flax import linen as nn
 from jax import numpy as jnp
 
@@ -41,7 +40,7 @@ class TransformerEncoderBlock(nn.Module):
         return out
 
 
-class TransformerDecoderBlock(nn.Module):
+class TransformerDecoderWithContextBlock(nn.Module):
     dimension: int
     dimension_inner: int
     num_heads: int
@@ -71,6 +70,27 @@ class TransformerDecoderBlock(nn.Module):
             )
         )
         out = layer_norms[2](out + position_wise(out))
+
+        return out
+
+
+class TransformerDecoderWithoutContextBlock(nn.Module):
+    dimension: int
+    dimension_inner: int
+    num_heads: int
+
+    @nn.compact
+    def __call__(self, inputs):
+        assert inputs.shape[-1] == self.dimension
+
+        self_attention = MultiHeadAttention(
+            dimension=self.dimension, num_heads=self.num_heads, masked=True
+        )
+        layer_norms = [nn.normalization.LayerNorm() for _ in range(2)]
+        position_wise = PositionWiseFFN(dimension=self.dimension_inner)
+
+        out = layer_norms[0](inputs + self_attention(inputs, inputs, inputs))
+        out = layer_norms[1](out + position_wise(out))
 
         return out
 
@@ -109,7 +129,7 @@ class TransformerEncoderDecoder(nn.Module):
             for _ in range(self.num_blocks)
         ]
         decoder_stack = [
-            TransformerDecoderBlock(
+            TransformerDecoderWithContextBlock(
                 dimension=self.dimension,
                 dimension_inner=self.dimension_inner,
                 num_heads=self.num_heads,
@@ -128,5 +148,49 @@ class TransformerEncoderDecoder(nn.Module):
         for decoder_block in decoder_stack:
             out = decoder_block(out, encoder_outputs=encoder_outputs)
 
-        projected_outputs = embed.attend(out)
-        return nn.softmax(projected_outputs)
+        logits = embed.attend(out)
+        return logits
+
+
+@functools.partial(
+    nn.vmap,
+    variable_axes={"params": None},
+    split_rngs={"params": False},
+    in_axes=0,
+    out_axes=0,
+    axis_name="batch",
+)
+class TransformerDecoder(nn.Module):
+    dimension: int
+    num_heads: int
+    dimension_inner: int
+    num_blocks: int
+    num_embeddings: int
+
+    @nn.compact
+    def __call__(self, inputs):
+        embed = nn.linear.Embed(
+            num_embeddings=self.num_embeddings, features=self.dimension
+        )
+        position_vectors = self.param(
+            "position_vectors",
+            nn.initializers.lecun_normal(),
+            (inputs.shape[-1], self.dimension),
+        )
+        decoder_stack = [
+            TransformerDecoderWithoutContextBlock(
+                dimension=self.dimension,
+                dimension_inner=self.dimension_inner,
+                num_heads=self.num_heads,
+            )
+            for _ in range(self.num_blocks)
+        ]
+
+        embedded_inputs = embed(inputs)
+        out = embedded_inputs + position_vectors
+
+        for decoder_block in decoder_stack:
+            out = decoder_block(out)
+
+        logits = embed.attend(out)
+        return logits
