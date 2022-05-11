@@ -15,7 +15,7 @@ def simple_sample(
     keys = keys.reshape((batch_size, token_count, 2))
 
     def body_fn(i, input):
-        logits = state.apply_fn(state.params, input)
+        logits = state.apply_fn(state.params, input, False)
         probs = jax.nn.softmax(logits[:, i])
 
         def sample_token(probs, key):

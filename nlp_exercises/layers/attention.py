@@ -1,5 +1,6 @@
 from flax import linen as nn
-from typing import Callable, Optional
+from typing import Callable
+import functools
 import jax.numpy as jnp
 
 
@@ -7,10 +8,11 @@ class MultiHeadAttention(nn.Module):
     dimension: int
     num_heads: int = 1
     masked: bool = False
+    dtype: jnp.dtype = jnp.float16
 
-    WK_init: Callable = nn.initializers.lecun_normal()
-    WQ_init: Callable = nn.initializers.lecun_normal()
-    WV_init: Callable = nn.initializers.lecun_normal()
+    WK_init: Callable = nn.initializers.normal(0.02)
+    WQ_init: Callable = nn.initializers.normal(0.02)
+    WV_init: Callable = nn.initializers.normal(0.02)
 
     def _split_heads(self, x):
         split = x.reshape((-1, self.num_heads, self.dimension // self.num_heads))
@@ -24,15 +26,16 @@ class MultiHeadAttention(nn.Module):
         assert self.dimension % self.num_heads == 0
 
         WX_shape = (key_x.shape[-1], self.dimension)
-        WK = self.param("WK", self.WK_init, WX_shape)
-        WQ = self.param("WQ", self.WQ_init, WX_shape)
-        WV = self.param("WV", self.WV_init, WX_shape)
+        WK = self.param("WK", self.WK_init, WX_shape, self.dtype)
+        WQ = self.param("WQ", self.WQ_init, WX_shape, self.dtype)
+        WV = self.param("WV", self.WV_init, WX_shape, self.dtype)
 
         if not self.masked:
             mask = jnp.zeros((1, 1, 1))
         else:
             mask = jnp.triu(
-                jnp.full((1, key_x.shape[-2], key_x.shape[-2]), -jnp.inf), k=1
+                jnp.full((1, key_x.shape[-2], key_x.shape[-2]), -jnp.inf),
+                k=1,
             )
 
         K = jnp.dot(key_x, WK)
